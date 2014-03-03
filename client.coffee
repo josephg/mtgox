@@ -107,13 +107,14 @@ scroll_x = -10 # in tile coords
 scroll_y = -2
 
 colors =
-  solid: 'black'
+  #solid: 'hsl(29, 100%, 7%)'
+  solid: 'hsl(184, 49%, 7%)'
   nothing: 'white'
-  thinshuttle: '#f0f'
-  shuttle: '#808'
-  negative: 'red'
-  positive: '#0f0'
-  thinsolid: '#888'
+  shuttle: 'hsl(44, 87%, 52%)'
+  thinshuttle: 'hsl(44, 87%, 72%)'
+  negative: 'hsl(17, 98%, 36%)'
+  positive: 'hsl(170, 49%, 51%)'
+  thinsolid: 'lightgrey'
   bridge: '#08f'
 
 placing = 'nothing'
@@ -399,7 +400,7 @@ draw = ->
     drawUIBoxes()
     needsDraw = false
 drawReal = ->
-  ctx.fillStyle = 'black'
+  ctx.fillStyle = colors['solid']
   ctx.fillRect 0, 0, canvas.width, canvas.height
   # Draw the tiles
   simulator = if mode is 'editing' then safe else active
@@ -409,8 +410,13 @@ drawReal = ->
     {px, py} = worldToScreen tx, ty
     if px+size >= 0 and px < canvas.width and py+size >= 0 and py < canvas.height
       ctx.fillStyle = colors[v]
-
       ctx.fillRect px, py, size, size
+      if v is 'nothing' and (v2 = simulator.get(tx,ty-1)) != 'nothing'
+        ctx.fillStyle = colors[v2 ? 'solid']
+        ctx.globalAlpha = 0.3
+        ctx.fillRect px, py, size, size*0.2
+        ctx.globalAlpha = 1
+
       if (p = pressure[k]) and p != 0
         ctx.fillStyle = if p < 0 then 'rgba(255,0,0,0.2)' else 'rgba(0,255,0,0.2)'
         ctx.fillRect px, py, size, size
@@ -452,7 +458,7 @@ drawReal = ->
         {px, py} = worldToScreen x+mtx-selectOffset.tx, y+mty-selectOffset.ty
         if px+size >= 0 and px < canvas.width and py+size >= 0 and py < canvas.height
           v = selection[[x,y]]
-          ctx.fillStyle = if v then colors[v] else 'black'
+          ctx.fillStyle = if v then colors[v] else colors['solid']
           ctx.fillRect px, py, size, size
     ctx.strokeStyle = 'rgba(0,255,255,0.5)'
     ctx.strokeRect mpx - selectOffset.tx*size, mpy - selectOffset.ty*size, selection.tw*size, selection.th*size
