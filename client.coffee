@@ -1,14 +1,18 @@
 canvas = document.getElementsByTagName('canvas')[0]
 canvas.parentNode.appendChild(uiCanvas = document.createElement('canvas'))
 
+ctx = null
 window.onresize = ->
-  uiCanvas.width = canvas.width = window.innerWidth
-  uiCanvas.height = canvas.height = window.innerHeight
+  uiCanvas.width = canvas.width = window.innerWidth * devicePixelRatio
+  uiCanvas.height = canvas.height = window.innerHeight * devicePixelRatio
+  canvas.style.width = uiCanvas.style.width = innerWidth + 'px'
+  canvas.style.height = uiCanvas.style.height = innerHeight + 'px'
+  ctx = canvas.getContext '2d'
+  ctx.scale devicePixelRatio, devicePixelRatio
   draw?()
   #drawUI?()
   drawUIBoxes?()
 window.onresize()
-ctx = canvas.getContext '2d'
 
 ###
 audioCtx = new (window.AudioContext || window.webkitAudioContext)?()
@@ -474,8 +478,10 @@ drawReal = ->
 
   return
 
+###
 drawUI = ->
   uictx = uiCanvas.getContext '2d'
+  uictx.scale devicePixelRatio, devicePixelRatio
   uictx.clearRect 0, 0, uiCanvas.width, uiCanvas.height
   uictx.fillStyle = 'rgba(200,200,200,0.9)'
   uictx.beginPath()
@@ -512,6 +518,7 @@ drawUI = ->
     uictx.fillStyle = '#eee'
     uictx.fillText text, 35, y
     y += 25
+###
 
 
 UIBOXSIZE = 80
@@ -522,8 +529,8 @@ uiboxes = []
 do ->
   boxes = ['move', 'nothing', 'solid', 'positive', 'negative', 'shuttle', 'thinshuttle', 'thinsolid', 'bridge']
 
-  x = canvas.width / 2 - (boxes.length / 2) * UIBOXSIZE
-  y = canvas.height - 100
+  x = canvas.width/devicePixelRatio / 2 - (boxes.length / 2) * UIBOXSIZE
+  y = canvas.height/devicePixelRatio - 100
   for mat, i in boxes
     uiboxes.push {x, y, mat}
     x += UIBOXSIZE
@@ -532,6 +539,8 @@ drawUIBoxes = ->
   uictx = uiCanvas.getContext '2d'
   uictx.clearRect 0, 0, uiCanvas.width, uiCanvas.height
   return unless mode is 'editing'
+  uictx.save()
+  uictx.scale devicePixelRatio, devicePixelRatio
   uictx.fillStyle = 'rgba(200,200,200,0.9)'
 
   uictx.font = 'bold 14px Arial'
@@ -567,6 +576,7 @@ drawUIBoxes = ->
       '#eee'
     #uictx.fillText "#{i}", x + UIBOXSIZE/2, y + UIBOXSIZE/2 - 15
     uictx.fillText mat, x + UIBOXSIZE/2, y + UIBOXSIZE/2
+  uictx.restore()
 
 
 
