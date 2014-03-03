@@ -103,8 +103,8 @@ for y in [1..limit.height - 2]
   safe.set limit.width + 1, y, 'nothing'
   safe.set limit.width + 2, y, 'shuttle'
 
-scroll_x = 0 # in tile coords
-scroll_y = 0
+scroll_x = -10 # in tile coords
+scroll_y = -2
 
 colors =
   solid: 'black'
