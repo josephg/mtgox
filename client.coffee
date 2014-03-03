@@ -80,12 +80,28 @@ loadSound '/sounds/thud.wav', (error, buffer) ->
   sounds.thud = buffer
 ###
 
+resetSwitches = (simulator) ->
+  for number in [0...8]
+    simulator.set -1, number * 2 + 1, 'thinsolid'
+
+
 CELL_SIZE = 20
 zoom_level = 1
 size = CELL_SIZE * zoom_level
 
-simulator = new Simulator {}
-pressure = {}
+
+
+safe = new Simulator {}
+active = null
+limit = {width:20, height:20}
+
+mode = 'editing' # or 'running'
+
+resetSwitches safe
+safe.set limit.width, 1, 'thinsolid'
+for y in [1..limit.height - 2]
+  safe.set limit.width + 1, y, 'nothing'
+  safe.set limit.width + 2, y, 'shuttle'
 
 scroll_x = 0 # in tile coords
 scroll_y = 0
@@ -106,8 +122,6 @@ selectedA = selectedB = null
 selectOffset = null
 selection = null
 
-show_gridlines = no
-
 # given pixel x,y returns tile x,y
 screenToWorld = (px, py) ->
   return {tx:null, ty:null} unless px?
@@ -125,12 +139,15 @@ worldToScreen = (tx, ty) ->
   px: tx * size - Math.floor(scroll_x * size)
   py: ty * size - Math.floor(scroll_y * size)
 
+withinLimit = (x, y) ->
+  0 <= x < limit.width and 0 <= y < limit.height
+
 copySubgrid = (rect) ->
   {tx, ty, tw, th} = rect
   subgrid = {tw,th}
   for y in [ty..ty+th]
     for x in [tx..tx+tw]
-      if s = simulator.grid[[x,y]]
+      if s = safe.grid[[x,y]]
         subgrid[[x-tx,y-ty]] = s
   subgrid
 
@@ -152,10 +169,33 @@ mirror = ->
     new_selection[[ty,tx]] = v
   selection = new_selection
 
+timer = null
+run = ->
+  return unless mode is 'editing'
+  mode = 'running'
+  active = new Simulator JSON.parse JSON.stringify safe.grid
+
+  timer = setInterval ->
+    active.step()
+    draw()
+  , 200
+
+edit = ->
+  return unless mode is 'running'
+  mode = 'editing'
+  active = null
+  clearInterval timer
+
 document.onkeydown = (e) ->
   kc = e.keyCode
 
   switch kc
+    when 32 # space
+      if mode is 'editing'
+        run()
+      else
+        edit()
+
     when 37 # left
       scroll_x -= 1
     when 39 # right
@@ -180,10 +220,6 @@ document.onkeydown = (e) ->
     when 77 # m
       mirror() if selection
 
-    when 9 # tab
-      show_gridlines = !show_gridlines
-      e.preventDefault()
-
   pressed = ({
     # 1-8
     49: 'nothing'
@@ -206,13 +242,26 @@ document.onkeydown = (e) ->
   })[kc]
   if pressed?
     placing = if pressed is 'solid' then null else pressed
+
+  if mode is 'running' and 49 <= kc <= 57
+    number = kc - 49
+    active.set -1, number * 2 + 1, 'negative'
+
   draw()
 
 document.onkeyup = (e) ->
   kc = e.keyCode
-  if kc == 16 # shift
-    imminent_select = false
-    draw()
+
+  if mode is 'running'
+    if 49 <= kc <= 57
+      number = kc - 49
+      active.set -1, number * 2 + 1, 'thinsolid'
+      draw()
+
+  if mode is 'editing'
+    if kc == 16 # shift
+      imminent_select = false
+      draw()
 
 window.onmousewheel = (e) ->
   if e.shiftKey
@@ -256,7 +305,8 @@ paint = ->
   delta = {}
   line fromtx, fromty, tx, ty, (x, y) ->
     delta[[x,y]] = placing
-    simulator.set x, y, placing
+    safe.set x, y, placing if withinLimit x, y
+
   #ws.send JSON.stringify {delta}
 
 paste = ->
@@ -269,11 +319,10 @@ paste = ->
     for x in [0...selection.tw]
       tx = mtx+x
       ty = mty+y
-      if (s = selection[[x,y]]) != simulator.get tx,ty
+      if (s = selection[[x,y]]) != safe.get tx,ty
         delta[[tx,ty]] = s or null
-        simulator.set tx, ty, s
+        safe.set tx, ty, s if withinLimit tx, ty
   #ws.send JSON.stringify {delta}
-
 
 selectMat = ->
   for {x, y, mat} in uiboxes
@@ -289,7 +338,10 @@ mouse = {x:null,y:null, mode:null}
 window.onblur = ->
   mouse.mode = null
   imminent_select = false
+  if mode is 'running'
+    resetSwitches active
 document.onmousemove = (e) ->
+  return unless mode is 'editing'
   mouse.from = {tx: mouse.tx, ty: mouse.ty}
   mouse.x = e.pageX
   mouse.y = e.pageY
@@ -299,6 +351,7 @@ document.onmousemove = (e) ->
     when 'select' then selectedB = screenToWorld mouse.x, mouse.y
   draw()
 document.onmousedown = (e) ->
+  return unless mode is 'editing'
   if imminent_select
     mouse.mode = 'select'
     selection = selectOffset = null
@@ -348,6 +401,9 @@ draw = ->
 drawReal = ->
   ctx.fillStyle = 'black'
   ctx.fillRect 0, 0, canvas.width, canvas.height
+  # Draw the tiles
+  simulator = if mode is 'editing' then safe else active
+  pressure = simulator.getPressure()
   for k,v of simulator.grid
     {x:tx,y:ty} = parseXY k
     {px, py} = worldToScreen tx, ty
@@ -359,10 +415,20 @@ drawReal = ->
         ctx.fillStyle = if p < 0 then 'rgba(255,0,0,0.2)' else 'rgba(0,255,0,0.2)'
         ctx.fillRect px, py, size, size
 
+  # 0,0
+  zeroPos = worldToScreen 0, 0
+  ctx.lineWidth = 3
+  ctx.strokeStyle = 'yellow'
+  ctx.strokeRect zeroPos.px, zeroPos.py, limit.width * size, limit.height * size
+
+
   mx = mouse.x
   my = mouse.y
   {tx:mtx, ty:mty} = screenToWorld mx, my
   {px:mpx, py:mpy} = worldToScreen mtx, mty
+
+  # Selection junk
+  return if mode is 'running'
 
   if mouse.mode is 'select'
     sa = selectedA
@@ -370,11 +436,7 @@ drawReal = ->
   else if imminent_select
     sa = sb = {tx:mtx, ty:mty}
 
-  if show_gridlines
-    ctx.fillStyle = 'rgba(255,255,127,0.5)'
-    ctx.fillRect mpx + size/4, 0, size/2, canvas.height
-    ctx.fillRect 0, mpy + size/4, canvas.width, size/2
-
+  ctx.lineWidth = 1
   if sa
     {tx, ty, tw, th} = enclosingRect sa, sb
     {px, py} = worldToScreen tx, ty
@@ -396,6 +458,7 @@ drawReal = ->
     ctx.strokeRect mpx - selectOffset.tx*size, mpy - selectOffset.ty*size, selection.tw*size, selection.th*size
     ctx.globalAlpha = 1
   else if mpx?
+    # Mouse hover
     ctx.fillStyle = colors[placing ? 'solid']
     ctx.fillRect mpx + size/4, mpy + size/4, size/2, size/2
 
@@ -462,6 +525,7 @@ do ->
 drawUIBoxes = ->
   uictx = uiCanvas.getContext '2d'
   uictx.clearRect 0, 0, uiCanvas.width, uiCanvas.height
+  return unless mode is 'editing'
   uictx.fillStyle = 'rgba(200,200,200,0.9)'
 
   uictx.font = 'bold 14px Arial'
@@ -514,9 +578,5 @@ window.addEventListener 'paste', (e) ->
 
 
 
-setInterval ->
-  simulator.step()
-  pressure = simulator.getPressure()
-  draw()
-, 200
+draw()
 
