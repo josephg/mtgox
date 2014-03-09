@@ -48,11 +48,21 @@ println = (l) ->
 window.onresize = ->
   window.scrollTo 0, document.documentElement.scrollHeight
 
-i = 0
-nextIntro = ->
-  println intro[i].message
-  setTimeout nextIntro, intro[i].time*1000 if i+1 < intro.length
-  listTransactions() if ++i is intro.length
+current_user = null
+
+
+
+
+
+
+
+###
+nextIntro = do ->
+  i = 0
+  ->
+    println intro[i].message
+    setTimeout nextIntro, intro[i].time*1000 if i+1 < intro.length
+    listTransactions() if ++i is intro.length
 nextIntro()
 
 listTransactions = ->
@@ -72,22 +82,24 @@ listTransactions = ->
     done() unless txns.length
   next()
   done = -> actions()
+###
 
 awaiting = {}
-window.onkeypress = (e) -> awaiting[e.keyCode]?()
+window.onkeypress = (e) ->
+  if (f = awaiting[e.keyCode])
+    awaiting = {}
+    document.getElementById('cursor').remove()
+    f()
+
 await = (keys) ->
   awaiting[k.charCodeAt(0)] = func for k, func of keys
-exec = (f) ->
-  awaiting = {}
-  document.getElementById('cursor').remove()
-  f()
 
 pad = (n, width, padding=' ') ->
   s = ''+n
   while s.length < width
     s = padding+s
   s
-high_scores = ->
+print_high_scores = ->
   println()
   println '==== FATTEST WALLETS ===='
   high_scores = (Math.random()*300 for [1..10]).sort (x,y) -> y-x
@@ -96,14 +108,121 @@ high_scores = ->
   actions()
 
 my_wallets = ->
+  actions()
+
+logout = ->
+  actions()
 
 actions = ->
   println()
-  println ['0. ', tag 'a', 'high scores', onclick: -> exec high_scores]
-  println ['1. ', tag 'a', 'my wallets', onclick: -> exec my_wallets]
-  println ['2. ', tag 'a', 'logout', onclick: -> exec logout]
+  println ['0. ', tag 'a', 'high scores', onclick: print_high_scores]
+  println ['1. ', tag 'a', 'my wallets', onclick: my_wallets]
+  println ['2. ', tag 'a', 'logout', onclick: logout]
   println [tag('span', '> '), tag 'span#cursor']
   await
-    0: -> exec high_scores
-    1: -> exec my_wallets
-    2: -> exec logout
+    0: print_high_scores
+    1: my_wallets
+    2: logout
+
+
+decide = (options) ->
+  println (for k, v of options
+    tag 'span.option', ['[ ', tag('a', k, onclick:v), ' ]  ']
+  )
+
+prompt = (str, callback) ->
+  println [tag('span', str), $entry = tag('span.entry'), $cursor = tag 'span#cursor']
+  window.addEventListener 'keypress', keypress = (e) ->
+    $entry.textContent += String.fromCharCode(e.charCode)
+  window.addEventListener 'keydown', keydown = (e) ->
+    if e.keyCode is 8
+      $entry.textContent = $entry.textContent.substr 0, $entry.textContent.length-1
+      e.preventDefault()
+    else if e.keyCode is 85 and e.ctrlKey
+      # ctrl+u
+      $entry.textContent = ''
+      e.preventDefault()
+    else if e.keyCode is 13
+      # Enter
+      window.removeEventListener 'keypress', keypress
+      window.removeEventListener 'keydown', keydown
+      $cursor.remove()
+      callback $entry.textContent
+
+
+
+xhr = (payload, callback) ->
+  request = new XMLHttpRequest()
+  request.open 'POST', '/uplink', true
+  request.setRequestHeader 'Content-Type', 'application/json'
+
+  request.onload = ->
+    if request.status != 200
+      callback request.status
+    else
+      callback null, JSON.parse request.responseText
+
+  try
+    request.send JSON.stringify payload
+  catch e
+    callback e.message
+
+request = (data, callback) ->
+  println "-------->"
+  xhr data, (err, response) ->
+    if err
+      println "ERR #{(err.message ? err)}"
+      callback err
+    else
+      println "<---GOT RESPONSE"
+      callback null, response
+
+
+login_flow = ->
+  prompt 'login: ', (user) ->
+    prompt 'password: ', (pwd) ->
+      request {a:'login', user, pwd}, (err, response) ->
+        console.log response
+        if !err
+          current_user = user
+          actions()
+
+adduser_flow = ->
+  prompt 'handle: ', (user) ->
+    return println "adduser: The user `root' already exists." if user is 'root'
+
+    println "Adding user `#{user}' ..."
+    uid = (Math.random() * 10000) |0
+    gid = (Math.random() * 10000) |0
+    println "Adding new group `#{user}' (#{gid}) ..."
+    println "Adding new user `#{user}' (#{uid}) with group `#{user}' ..."
+    println "Creating home directory `/home/#{user}' ..."
+    println "Copying files from `/etc/skel' ..."
+    do enterPwd = ->
+      prompt "Enter new UNIX password: ", (pwd) ->
+        prompt "Retype new UNIX password: ", (pwd2) ->
+          if pwd != pwd2
+            println "Sorry, passwords do not match"
+            println "passwd: Authentication token manipulation error"
+            println "passwd: password unchanged"
+            println "Try again? [y/N] y"
+            enterPwd()
+          else
+            request {a:'adduser', user, pwd}, (err) ->
+              if !err
+                println "passwd: password updated successfully"
+                current_user = user
+                actions()
+
+
+
+
+init = ->
+  println '\\_\\  /_/ woo things banner'
+  println()
+  decide
+    'login': login_flow
+    'adduser': adduser_flow
+
+
+init()

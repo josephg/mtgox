@@ -11,12 +11,13 @@ digest = (msg) ->
 # pass_hash is sha256(server_secret+sha256(user_pass))
 ###
 db.run '''
-CREATE TABLE IF NOT EXISTS users (
-  pass_hash string
-  )
 '''
 ###
 db.exec '''
+CREATE TABLE IF NOT EXISTS users (
+  user string PRIMARY KEY,
+  pwd string
+  );
 CREATE TABLE IF NOT EXISTS wallets (
   address string,
   owner_id string,
@@ -34,6 +35,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 app = express()
 
 app.use express.static __dirname + '/static'
+app.use express.cookieParser()
+app.use express.cookieSession secret: 'so secret ermegherd'
 app.use express.json()
 
 ###
@@ -44,6 +47,7 @@ app.get '/login', (req, res) ->
   res.end()
 ###
 
+###
 app.get '/wallets', (req, res) ->
   shasum = digest req.body.pass_hash
   db.all 'SELECT * FROM wallets WHERE owner_id = ?', shasum, (err, rows) ->
@@ -79,6 +83,29 @@ app.get '/wallets/:address', (req, res) ->
     else
       res.json 404, success: no
     res.end()
+###
+
+app.post '/uplink', (req, res) ->
+  msg = req.body
+  switch msg.a
+    when 'login'
+      db.get 'SELECT * FROM users WHERE user = ? AND pwd = ?', msg.user, msg.pwd, (err, r) ->
+        return res.end 500, err if err
+
+        return res.json 404, {err:'invalid'} unless r
+        req.session.user = msg.user
+        res.json 200, {}
+      
+    when 'adduser'
+      db.run 'INSERT INTO users (user, pwd) VALUES (?, ?)', msg.user, msg.pwd, (err, r) ->
+        console.log err, r
+        return res.send 500, err if err
+        req.session.user = msg.user
+        res.json 200, {}
+
+    else
+      res.send 400, {err:"#{msg.a} unknown"}
+
 
 PORT = process.env['PORT'] ? 3000
 
