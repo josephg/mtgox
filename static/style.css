@@ -29,3 +29,14 @@ a {
     visibility: hidden;
   }
 }
+
+@font-face {
+  font-family: 'OCRA';
+  src: url('assets/ocra-webfont.eot');
+  src: url('assets/ocra-webfont.eot?#iefix') format('embedded-opentype'),
+       url('assets/ocra-webfont.woff') format('woff'),
+       url('assets/ocra-webfont.ttf') format('truetype'),
+       url('assets/ocra-webfont.svg#ocraregular') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
