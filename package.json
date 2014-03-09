@@ -1,0 +1,17 @@
+{
+  "name": "mtgox",
+  "version": "0.0.0",
+  "description": "",
+  "dependencies": {
+    "express": "~3.5.0",
+    "sqlite3": "~2.2.0"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/josephg/mtgox"
+  },
+  "author": "",
+  "license": "BSD",
+  "private": true
+}

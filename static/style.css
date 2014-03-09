@@ -1,0 +1,31 @@
+body {
+  background: black;
+  color: white;
+  font-family: OCRA;
+}
+.line {
+  white-space: pre-wrap;
+}
+
+a {
+  color: lightgreen;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+@keyframes blink {  
+  0% { color: inherit; }
+  100% { color: transparent; }
+}
+#cursor {
+  -webkit-animation: blink 1s steps(4, start) infinite;
+  display: inline-block;
+  width: 0.5em;
+  background: white;
+  height: 1em;
+}
+@-webkit-keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}

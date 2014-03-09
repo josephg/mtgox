@@ -1,4 +1,5 @@
-canvas = document.getElementsByTagName('canvas')[0]
+document.body.style.margin = '0'
+canvas = document.body.appendChild(document.createElement('canvas'))
 canvas.parentNode.appendChild(uiCanvas = document.createElement('canvas'))
 
 ctx = null
