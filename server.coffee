@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
   );
 CREATE TABLE IF NOT EXISTS wallets (
   address string,
-  owner_id string,
+  user string,
   amount_mbtc int,
   boilerplate text
   );
@@ -105,6 +105,16 @@ app.post '/uplink', (req, res) ->
 
     else
       res.send 400, {err:"#{msg.a} unknown"}
+
+app.get '/wallets', (req, res, next) ->
+  user = req.session.user
+  return res.send 400, 'Not logged in' unless user
+
+  db.all 'SELECT * FROM wallets WHERE user = ?', user, (err, r) ->
+    return next err if err
+
+    res.json 200, {wallets:r}
+
 
 
 PORT = process.env['PORT'] ? 3000

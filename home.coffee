@@ -105,24 +105,41 @@ print_high_scores = ->
   high_scores = (Math.random()*300 for [1..10]).sort (x,y) -> y-x
   for s,i in high_scores
     println "  #{pad i+1, 2}.  #{pad s.toFixed(3), 7}  #{rand_address()}"
-  actions()
+  root_actions()
+
+create_wallet = ->
+  show_bp null, 'edit', (data) ->
+
 
 my_wallets = ->
-  actions()
+  xhr 'GET', '/wallets', null, (err, data) ->
+    println JSON.stringify data
+    menu
+      'create wallet': create_wallet
+      #'transfer BTC': transfer
+      #'delete wallet': delete_wallet
+
+      'return': root_actions
 
 logout = ->
-  actions()
+  root_actions()
 
-actions = ->
+menu = (items) ->
   println()
-  println ['0. ', tag 'a', 'high scores', onclick: print_high_scores]
-  println ['1. ', tag 'a', 'my wallets', onclick: my_wallets]
-  println ['2. ', tag 'a', 'logout', onclick: logout]
+  i = 0
+  my_events = {}
+  for k,v of items
+    println [i+'. ', tag 'a', k, onclick: v]
+    my_events[i] = v
+    i++
   println [tag('span', '> '), tag 'span#cursor']
-  await
-    0: print_high_scores
-    1: my_wallets
-    2: logout
+  await my_events
+
+root_actions = ->
+  menu
+    'high scores': print_high_scores
+    'my wallets': my_wallets
+    'logout': logout
 
 
 decide = (options) ->
@@ -150,33 +167,31 @@ prompt = (str, callback) ->
       callback $entry.textContent
 
 
+xhr = (method, url, payload, callback) ->
+  r = new XMLHttpRequest()
+  r.open method, url, true
+  r.setRequestHeader 'Content-Type', 'application/json' if payload
 
-xhr = (payload, callback) ->
-  request = new XMLHttpRequest()
-  request.open 'POST', '/uplink', true
-  request.setRequestHeader 'Content-Type', 'application/json'
-
-  request.onload = ->
-    if request.status != 200
-      callback request.status
+  r.onload = ->
+    if r.status != 200
+      callback r.status
     else
-      callback null, JSON.parse request.responseText
+      callback null, (if r.responseText then JSON.parse r.responseText)
 
   try
-    request.send JSON.stringify payload
+    r.send (if payload then JSON.stringify payload)
   catch e
     callback e.message
 
 request = (data, callback) ->
   println "-------->"
-  xhr data, (err, response) ->
+  xhr 'POST', '/uplink', data, (err, response) ->
     if err
       println "ERR #{(err.message ? err)}"
       callback err
     else
       println "<---GOT RESPONSE"
       callback null, response
-
 
 login_flow = ->
   prompt 'login: ', (user) ->
@@ -185,7 +200,7 @@ login_flow = ->
         console.log response
         if !err
           current_user = user
-          actions()
+          root_actions()
 
 adduser_flow = ->
   prompt 'handle: ', (user) ->
@@ -212,7 +227,7 @@ adduser_flow = ->
               if !err
                 println "passwd: password updated successfully"
                 current_user = user
-                actions()
+                root_actions()
 
 
 
