@@ -88,59 +88,24 @@ awaiting = {}
 window.onkeypress = (e) ->
   if (f = awaiting[e.keyCode])
     awaiting = {}
-    document.getElementById('cursor').remove()
     f()
 
 await = (keys) ->
   awaiting[k.charCodeAt(0)] = func for k, func of keys
-
-pad = (n, width, padding=' ') ->
-  s = ''+n
-  while s.length < width
-    s = padding+s
-  s
-print_high_scores = ->
-  println()
-  println '==== FATTEST WALLETS ===='
-  high_scores = (Math.random()*300 for [1..10]).sort (x,y) -> y-x
-  for s,i in high_scores
-    println "  #{pad i+1, 2}.  #{pad s.toFixed(3), 7}  #{rand_address()}"
-  root_actions()
-
-create_wallet = ->
-  show_bp null, 'edit', (data) ->
-
-
-my_wallets = ->
-  xhr 'GET', '/wallets', null, (err, data) ->
-    println JSON.stringify data
-    menu
-      'create wallet': create_wallet
-      #'transfer BTC': transfer
-      #'delete wallet': delete_wallet
-
-      'return': root_actions
-
-logout = ->
-  root_actions()
 
 menu = (items) ->
   println()
   i = 0
   my_events = {}
   for k,v of items
-    println [i+'. ', tag 'a', k, onclick: v]
-    my_events[i] = v
+    f = do (v) -> ->
+      document.getElementById('cursor').remove()
+      v()
+    println [i+'. ', tag 'a', k, onclick: f]
+    my_events[i] = f
     i++
   println [tag('span', '> '), tag 'span#cursor']
   await my_events
-
-root_actions = ->
-  menu
-    'high scores': print_high_scores
-    'my wallets': my_wallets
-    'logout': logout
-
 
 decide = (options) ->
   println (for k, v of options
@@ -166,6 +131,47 @@ prompt = (str, callback) ->
       $cursor.remove()
       callback $entry.textContent
 
+pad = (n, width, padding=' ') ->
+  s = ''+n
+  while s.length < width
+    s = padding+s
+  s
+print_high_scores = ->
+  println()
+  println '==== FATTEST WALLETS ===='
+  high_scores = (Math.random()*300 for [1..10]).sort (x,y) -> y-x
+  for s,i in high_scores
+    println "  #{pad i+1, 2}.  #{pad s.toFixed(3), 7}  #{rand_address()}"
+  root_actions()
+
+create_wallet = ->
+  document.body.appendChild fs = tag '.fullscreen', [
+    tag '.actions', [
+      tag 'a', '< back', onclick: -> fs.remove(); my_wallets()
+      ' '
+      tag 'button', 'VERIFY'
+    ]
+  ]
+
+
+my_wallets = ->
+  xhr 'GET', '/wallets', null, (err, data) ->
+    println JSON.stringify data
+    menu
+      'create wallet': create_wallet
+      #'transfer BTC': transfer
+      #'delete wallet': delete_wallet
+
+      'return': root_actions
+
+logout = ->
+  root_actions()
+
+root_actions = ->
+  menu
+    'high scores': print_high_scores
+    'my wallets': my_wallets
+    'logout': logout
 
 xhr = (method, url, payload, callback) ->
   r = new XMLHttpRequest()

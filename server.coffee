@@ -90,7 +90,7 @@ app.post '/uplink', (req, res) ->
   switch msg.a
     when 'login'
       db.get 'SELECT * FROM users WHERE user = ? AND pwd = ?', msg.user, msg.pwd, (err, r) ->
-        return res.end 500, err if err
+        return res.send 500, err if err
 
         return res.json 404, {err:'invalid'} unless r
         req.session.user = msg.user

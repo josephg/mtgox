@@ -12,6 +12,9 @@ a {
   text-decoration: none;
   cursor: pointer;
 }
+a:hover {
+  color: white;
+}
 
 @keyframes blink {  
   0% { color: inherit; }
@@ -48,12 +51,28 @@ canvas {
   cursor: crosshair;
 }
 
-
-.buttons {
-  position: absolute;
-  top: 5px;
-  right: 5px;
+.fullscreen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: black;
 }
-.buttons button {
-  font-family: inherit;
+.actions {
+  width: 100%;
+  padding: 5px 10px;
+  text-align: right;
+  box-sizing: border-box;
+}
+.actions button {
+  cursor: pointer;
+  padding: 0.2em 0.6em;
+  border-radius: 2px;
+  border: 2px solid lightgreen;
+  font-family: OCRA;
+  font-size: inherit;
+  color: lightgreen;
+  background: transparent;
+}
+.actions button:hover {
+  border-color: white;
+  color: white;
 }
