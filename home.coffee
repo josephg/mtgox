@@ -144,21 +144,70 @@ print_high_scores = ->
     println "  #{pad i+1, 2}.  #{pad s.toFixed(3), 7}  #{rand_address()}"
   root_actions()
 
-create_wallet = ->
+edit_wallet = (wallet) ->
   document.body.appendChild fs = tag '.fullscreen', [
-    tag '.actions', [
-      tag 'a', '< back', onclick: -> fs.remove(); my_wallets()
+    $actions = tag '.actions', [
+      tag 'a', '< back', onclick: ->
+        b.unregister()
+        fs.remove()
+        my_wallets()
       ' '
-      tag 'button', 'VERIFY'
+      tag 'button', 'VERIFY', onclick: ->
+        b.unregister()
+        fs.remove()
+        verify_wallet {address: wallet.address, grid: b.grid()}
+    ]
+    tag '.wallet', [
+      (b = new Boilerplate wallet.grid).el
     ]
   ]
+  do window.onresize = ->
+    b.resizeTo innerWidth, innerHeight - $actions.getBoundingClientRect().height
+  b.edit()
+
+verify_wallet = (wallet) ->
+  document.body.appendChild fs = tag '.fullscreen', [
+    $actions = tag '.actions', [
+      tag 'a', '< back', onclick: ->
+        b.unregister()
+        fs.remove()
+        edit_wallet wallet
+      ' '
+      $save = tag 'button', 'SAVE', disabled: 'disabled', onclick: ->
+        b.unregister()
+        fs.remove()
+        save_wallet wallet
+    ]
+    tag '.wallet', [
+      (b = new Boilerplate wallet.grid).el
+    ]
+  ]
+  do window.onresize = ->
+    b.resizeTo innerWidth, innerHeight - $actions.getBoundingClientRect().height
+  b.run ->
+    if b.is_solved()
+      b.stop()
+      $save.removeAttribute 'disabled'
+
+save_wallet = (wallet) ->
+  done = (err, data) ->
+    if err
+      println 'ERR ' + JSON.stringify err
+    println JSON.stringify data
+    my_wallets()
+
+  if wallet.address?
+    xhr 'PUT', '/wallets/'+wallet.address, {grid: wallet.grid}, done
+  else
+    xhr 'POST', '/wallets', {grid: wallet.grid}, done
+
 
 
 my_wallets = ->
   xhr 'GET', '/wallets', null, (err, data) ->
     println JSON.stringify data
     menu
-      'create wallet': create_wallet
+      'create wallet': -> edit_wallet {address: null, grid: {}}
       #'transfer BTC': transfer
       #'delete wallet': delete_wallet
 

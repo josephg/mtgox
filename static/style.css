@@ -45,9 +45,6 @@ a:hover {
 }
 
 canvas {
-  width: 100%; height: 100%;
-  position: absolute;
-  top: 0; left: 0;
   cursor: crosshair;
 }
 
@@ -75,4 +72,10 @@ canvas {
 .actions button:hover {
   border-color: white;
   color: white;
+}
+
+.actions button:disabled {
+  border-color: hsl(17, 98%, 36%);
+  color: hsl(17, 98%, 36%);
+  cursor: not-allowed;
 }

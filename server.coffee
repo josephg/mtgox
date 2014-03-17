@@ -39,6 +39,9 @@ app.use express.cookieParser()
 app.use express.cookieSession secret: 'so secret ermegherd'
 app.use express.json()
 
+address_chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789'
+make_address = ->
+  '1'+(address_chars[Math.floor(Math.random()*address_chars.length)] for [1..33]).join('')
 ###
 app.get '/login', (req, res) ->
   pass_hash = req.body.pass_hash
@@ -115,6 +118,33 @@ app.get '/wallets', (req, res, next) ->
 
     res.json 200, {wallets:r}
 
+app.post '/wallets', (req, res, next) ->
+  user = req.session.user
+  return res.send 400, 'Not logged in' unless user
+
+  params = [
+    address = make_address()
+    user
+    0
+    JSON.stringify req.body.grid
+  ]
+  console.log params
+  db.run '''INSERT INTO wallets (address, user, amount_mbtc, boilerplate) VALUES
+                                (?, ?, ?, ?)''', params, (err, r) ->
+    console.log err, r
+    return res.send 500, err if err
+    res.json 200, {address}
+
+app.put '/wallets/:address', (req, res, next) ->
+  user = req.session.user
+  return res.send 400, 'Not logged in' unless user
+
+  db.run 'SELECT user FROM wallets WHERE address = ?', req.params.address, (err, r) ->
+    return res.send 500, err if err
+    return res.send 404 unless r? and r.user is user
+    db.run 'UPDATE wallets SET boilerplate = ? WHERE address = ?', req.body.grid, req.params.address, (err, r) ->
+      return res.send 500, err if err
+      res.send 200
 
 
 PORT = process.env['PORT'] ? 3000
