@@ -155,10 +155,10 @@ edit_wallet = (wallet) ->
       tag 'button', 'VERIFY', onclick: ->
         b.unregister()
         fs.remove()
-        verify_wallet {address: wallet.address, grid: b.grid()}
+        verify_wallet {address: wallet.address, boilerplate: b.grid()}
     ]
     tag '.wallet', [
-      (b = new Boilerplate wallet.grid).el
+      (b = new Boilerplate wallet.boilerplate).el
     ]
   ]
   do window.onresize = ->
@@ -179,7 +179,7 @@ verify_wallet = (wallet) ->
         save_wallet wallet
     ]
     tag '.wallet', [
-      (b = new Boilerplate wallet.grid).el
+      (b = new Boilerplate wallet.boilerplate).el
     ]
   ]
   do window.onresize = ->
@@ -197,17 +197,28 @@ save_wallet = (wallet) ->
     my_wallets()
 
   if wallet.address?
-    xhr 'PUT', '/wallets/'+wallet.address, {grid: wallet.grid}, done
+    xhr 'PUT', '/wallets/'+wallet.address, {boilerplate: wallet.boilerplate}, done
   else
-    xhr 'POST', '/wallets', {grid: wallet.grid}, done
+    xhr 'POST', '/wallets', {boilerplate: wallet.boilerplate}, done
 
 
 
 my_wallets = ->
   xhr 'GET', '/wallets', null, (err, data) ->
-    println JSON.stringify data
+    if not data?.wallets?
+      println "--- NO WALLETS ---"
+    else
+      println "    BTC  ADDRESS"
+      for w in data.wallets
+        w.boilerplate = JSON.parse w.boilerplate
+        println [
+          " #{pad (w.amount_mbtc/1000).toFixed(3), 6}  "
+          tag 'a', w.address, onclick: do (w) -> ->
+            document.getElementById('cursor').remove()
+            edit_wallet w
+        ]
     menu
-      'create wallet': -> edit_wallet {address: null, grid: {}}
+      'create wallet': -> edit_wallet {address: null, boilerplate: {}}
       #'transfer BTC': transfer
       #'delete wallet': delete_wallet
 

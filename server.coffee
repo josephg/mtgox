@@ -73,7 +73,7 @@ app.post '/wallets', (req, res, next) ->
     address = make_address()
     user
     0
-    JSON.stringify req.body.grid
+    JSON.stringify req.body.boilerplate
   ]
   console.log params
   db.run '''INSERT INTO wallets (address, user, amount_mbtc, boilerplate) VALUES
@@ -89,7 +89,7 @@ app.put '/wallets/:address', (req, res, next) ->
   db.run 'SELECT user FROM wallets WHERE address = ?', req.params.address, (err, r) ->
     return res.send 500, err if err
     return res.send 404 unless r? and r.user is user
-    db.run 'UPDATE wallets SET boilerplate = ? WHERE address = ?', req.body.grid, req.params.address, (err, r) ->
+    db.run 'UPDATE wallets SET boilerplate = ? WHERE address = ?', req.body.boilerplate, req.params.address, (err, r) ->
       return res.send 500, err if err
       res.send 200
 
