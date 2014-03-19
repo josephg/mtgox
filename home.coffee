@@ -138,11 +138,14 @@ pad = (n, width, padding=' ') ->
   s
 print_high_scores = ->
   println()
-  println '==== FATTEST WALLETS ===='
-  high_scores = (Math.random()*300 for [1..10]).sort (x,y) -> y-x
-  for s,i in high_scores
-    println "  #{pad i+1, 2}.  #{pad s.toFixed(3), 7}  #{rand_address()}"
-  root_actions()
+  xhr 'GET', '/phat_wallets', null, (err, data) ->
+    println '==== PHATTEST WALLETS ===='
+    for {address, amount_mbtc},i in data
+      println [
+        "  #{pad i+1, 2}.  #{pad (amount_mbtc/1000).toFixed(3), 7}  "
+        tag 'a', address, onclick: do (address) -> -> hack address
+      ]
+    root_actions()
 
 edit_wallet = (wallet) ->
   document.body.appendChild fs = tag '.fullscreen', [

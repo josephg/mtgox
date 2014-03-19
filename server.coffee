@@ -56,6 +56,11 @@ app.post '/uplink', (req, res) ->
     else
       res.send 400, {err:"#{msg.a} unknown"}
 
+app.get '/phat_wallets', (req, res) ->
+  db.all 'SELECT address, amount_mbtc FROM wallets ORDER BY amount_mbtc DESC LIMIT 10', (err, rs) ->
+    res.send 500, err if err
+    res.json 200, rs
+
 app.get '/wallets', (req, res, next) ->
   user = req.session.user
   return res.send 400, 'Not logged in' unless user
