@@ -98,6 +98,11 @@ app.put '/wallets/:address', (req, res, next) ->
       return res.send 500, err if err
       res.send 200
 
+app.get '/wallets/:address', (req, res, next) ->
+  db.get 'SELECT * FROM wallets WHERE address = ?', req.params.address, (err, r) ->
+    return res.send 500, err if err
+    res.json 200, r
+
 
 PORT = process.env['PORT'] ? 3000
 

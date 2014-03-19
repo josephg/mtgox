@@ -69,13 +69,17 @@ menu = (items) ->
   my_events = {}
   for k,v of items
     f = do (v) -> ->
-      document.getElementById('cursor').remove()
+      cancelMenu()
       v()
-    println [i+'. ', tag 'a', k, onclick: f]
+    println [i+'. ', tag 'a.menu', k, onclick: f]
     my_events[i] = f
     i++
   println [tag('span', '> '), tag 'span#cursor']
   await my_events
+
+cancelMenu = ->
+  awaiting = {}
+  document.getElementById('cursor').remove()
 
 decide = (options) ->
   println (for k, v of options
@@ -119,6 +123,8 @@ pad = (n, width, padding=' ') ->
     s = padding+s
   s
 
+fullscreen = (content) ->
+  document.body.appendChild fs = tag '.fullscreen', content
 
 ##################################################################### Game #
 
@@ -222,7 +228,7 @@ print_high_scores = ->
     for {address, amount_mbtc},i in data
       println [
         "  #{pad i+1, 2}.  #{pad (amount_mbtc/1000).toFixed(3), 7}  "
-        tag 'a', address, onclick: do (address) -> -> hack address
+        tag 'a', address, onclick: do (address) -> -> cancelMenu(); hack address, root_actions
       ]
     root_actions()
 
@@ -239,7 +245,7 @@ my_wallets = ->
         println [
           " #{pad (w.amount_mbtc/1000).toFixed(3), 6}  "
           tag 'a', w.address, onclick: do (w) -> ->
-            document.getElementById('cursor').remove()
+            cancelMenu()
             edit_wallet w
         ]
     menu
@@ -250,7 +256,7 @@ my_wallets = ->
       'return': root_actions
 
 edit_wallet = (wallet) ->
-  document.body.appendChild fs = tag '.fullscreen', [
+  fs = fullscreen [
     $actions = tag '.actions', [
       tag 'a', '< back', onclick: ->
         b.unregister()
@@ -271,7 +277,7 @@ edit_wallet = (wallet) ->
   b.edit()
 
 verify_wallet = (wallet) ->
-  document.body.appendChild fs = tag '.fullscreen', [
+  fs = fullscreen [
     $actions = tag '.actions', [
       tag 'a', '< back', onclick: ->
         b.unregister()
@@ -297,7 +303,7 @@ verify_wallet = (wallet) ->
 save_wallet = (wallet) ->
   done = (err, data) ->
     if err
-      println 'ERR ' + JSON.stringify err
+      return println 'ERR ' + JSON.stringify err
     println JSON.stringify data
     my_wallets()
 
@@ -308,5 +314,31 @@ save_wallet = (wallet) ->
 
 
 
+#----------------------------------------------------------------- Hacking -
+
+hack = (address, cb) ->
+  xhr 'GET', '/wallets/'+address, null, (err, wallet) ->
+    if err
+      return println 'ERR ' + JSON.stringify err
+    fs = fullscreen [
+      $actions = tag '.actions', [
+        tag 'a', '< back', onclick: ->
+          b.unregister()
+          fs.remove()
+          cb()
+      ]
+      tag '.wallet', [
+        (b = new Boilerplate JSON.parse wallet.boilerplate).el
+      ]
+    ]
+    do window.onresize = ->
+      b.resizeTo innerWidth, innerHeight - $actions.getBoundingClientRect().height
+    b.run ->
+      if b.is_solved()
+        b.stop()
+        b.unregister()
+        fs.remove()
+        println "04_ttx:  wallet #{address} compromised. #{wallet.amount_mbtc/100} recovered."
+        cb()
 
 init()
