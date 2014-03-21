@@ -214,12 +214,19 @@ adduser_flow = ->
 #--------------------------------------------------------------- Main menu -
 root_actions = ->
   menu
-    'high scores': print_high_scores
+    'scan': scan
     'my wallets': my_wallets
     'logout': logout
 
 logout = ->
   root_actions()
+
+#-------------------------------------------------------------------- Scan -
+scan = ->
+  menu
+    'return': root_actions
+    'prime targets': print_high_scores
+    #'random wallet': random_wallet
 
 print_high_scores = ->
   println()
@@ -230,8 +237,7 @@ print_high_scores = ->
         "  #{pad i+1, 2}.  #{pad (amount_mbtc/1000).toFixed(3), 7}  "
         tag 'a', address, onclick: do (address) -> -> cancelMenu(); hack address, root_actions
       ]
-    root_actions()
-
+    scan()
 
 #-------------------------------------------------------------- My wallets -
 my_wallets = ->
@@ -315,7 +321,6 @@ save_wallet = (wallet) ->
 
 
 #----------------------------------------------------------------- Hacking -
-
 hack = (address, cb) ->
   xhr 'GET', '/wallets/'+address, null, (err, wallet) ->
     if err
@@ -326,6 +331,8 @@ hack = (address, cb) ->
           b.unregister()
           fs.remove()
           cb()
+        ' '
+        tag 'span', "#{(wallet.amount_mbtc/1000).toFixed(3)} BTC"
       ]
       tag '.wallet', [
         (b = new Boilerplate JSON.parse wallet.boilerplate).el
@@ -338,7 +345,26 @@ hack = (address, cb) ->
         b.stop()
         b.unregister()
         fs.remove()
-        println "04_ttx:  wallet #{address} compromised. #{wallet.amount_mbtc/100} recovered."
-        cb()
+        choose_hack_dest wallet, b.record
+
+choose_hack_dest = (wallet, record) ->
+  println "04_ttx:  wallet #{wallet.address} compromised. #{wallet.amount_mbtc/10} BTC recovered."
+  xhr 'GET', '/wallets', null, (err, data) ->
+    if not data?.wallets?
+      println "--- NO WALLETS ---"
+    else
+      println "choose destination wallet:"
+      println "    BTC  ADDRESS"
+      opts = {}
+      for w in data.wallets
+        opts[w.address] = do (w) -> ->
+          println "manipulating blockchain..."
+          xhr 'POST', '/hack/'+wallet.address+'?to_address='+w.address, { record }, (err, data) ->
+            if err
+              println "ERR " + err
+              return choose_hack_dest wallet, record
+            println "transaction created. #{data.amount} BTC transferred to #{w.address}"
+            scan()
+      menu opts
 
 init()
