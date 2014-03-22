@@ -93,12 +93,12 @@ app.put '/wallets/:address', (req, res, next) ->
   user = req.session.user
   return res.send 400, 'Not logged in' unless user
 
-  db.run 'SELECT user FROM wallets WHERE address = ?', req.params.address, (err, r) ->
+  db.get 'SELECT user FROM wallets WHERE address = ?', req.params.address, (err, r) ->
     return res.send 500, err if err
     return res.send 404 unless r? and r.user is user
-    db.run 'UPDATE wallets SET boilerplate = ? WHERE address = ?', req.body.boilerplate, req.params.address, (err, r) ->
+    db.run 'UPDATE wallets SET boilerplate = ? WHERE address = ?', JSON.stringify(req.body.boilerplate), req.params.address, (err, r) ->
       return res.send 500, err if err
-      res.send 200
+      res.json 200, {}
 
 app.get '/wallets/:address', (req, res, next) ->
   db.get 'SELECT address, amount_mbtc, boilerplate FROM wallets WHERE address = ?', req.params.address, (err, r) ->

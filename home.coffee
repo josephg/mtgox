@@ -69,6 +69,7 @@ menu = (items) ->
   my_events = {}
   for k,v of items
     f = do (v) -> ->
+      println()
       cancelMenu()
       v()
     println [i+'. ', tag 'a.menu', k, onclick: f]
@@ -79,7 +80,7 @@ menu = (items) ->
 
 cancelMenu = ->
   awaiting = {}
-  document.getElementById('cursor').remove()
+  document.getElementById('cursor')?.remove()
 
 decide = (options) ->
   println (for k, v of options
@@ -214,7 +215,7 @@ adduser_flow = ->
 #--------------------------------------------------------------- Main menu -
 root_actions = ->
   menu
-    'scan': scan
+    'scan': -> scan true
     'my wallets': my_wallets
     'logout': logout
 
@@ -222,7 +223,8 @@ logout = ->
   root_actions()
 
 #-------------------------------------------------------------------- Scan -
-scan = ->
+scan = (is_initial) ->
+  println "Starting Nmap 4.01 ( http://nmap.org ) at #{Date.now()}" if is_initial
   menu
     'return': root_actions
     'prime targets': print_high_scores
@@ -241,6 +243,8 @@ print_high_scores = ->
 
 #-------------------------------------------------------------- My wallets -
 my_wallets = ->
+  println "Fetching wallets..."
+  println "Available wallets:"
   xhr 'GET', '/wallets', null, (err, data) ->
     if not data?.wallets?
       println "--- NO WALLETS ---"
