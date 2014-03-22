@@ -50,7 +50,6 @@ app.post '/uplink', (req, res) ->
       
     when 'adduser'
       db.run 'INSERT INTO users (user, pwd) VALUES (?, ?)', msg.user, msg.pwd, (err, r) ->
-        console.log err, r
         return res.send 500, err if err
         req.session.user = msg.user
         res.json 200, {}
@@ -59,7 +58,14 @@ app.post '/uplink', (req, res) ->
       res.send 400, {err:"#{msg.a} unknown"}
 
 app.get '/phat_wallets', (req, res) ->
-  db.all 'SELECT address, amount_mbtc FROM wallets ORDER BY amount_mbtc DESC LIMIT 10', (err, rs) ->
+  user = req.session.user
+  db.all '''
+  SELECT address, wallets.amount_mbtc, COUNT(transactions.amount_mbtc) as times_hacked
+  FROM wallets LEFT OUTER JOIN transactions
+  ON transactions.user = ? AND wallets.address = transactions.from_address
+  GROUP BY address
+  ORDER BY wallets.amount_mbtc DESC LIMIT 10
+  ''', user, (err, rs) ->
     res.send 500, err if err
     res.json 200, rs
 
@@ -82,10 +88,8 @@ app.post '/wallets', (req, res, next) ->
     0
     JSON.stringify req.body.boilerplate
   ]
-  console.log params
   db.run '''INSERT INTO wallets (address, user, amount_mbtc, boilerplate) VALUES
                                 (?, ?, ?, ?)''', params, (err, r) ->
-    console.log err, r
     return res.send 500, err if err
     res.json 200, {address}
 
@@ -114,6 +118,15 @@ app.post '/hack/:address', (req, res, next) ->
     return res.send 404
   db.run 'BEGIN EXCLUSIVE', (err) ->
     return res.send 500, err if err
+    db.get 'SELECT user, timestamp FROM transactions WHERE user = ? and from_address = ?', user, from_addr, (err, txn_r) ->
+      if err
+        db.run 'ROLLBACK'
+        return res.send 500, err
+      if txn_r
+        db.run 'ROLLBACK'
+        return res.json 400, message: 'you already hacked this wallet'
+      do_hack()
+  do_hack = ->
     db.get 'SELECT amount_mbtc FROM wallets WHERE address = ?', from_addr, (err, from_r) ->
       if err
         db.run 'ROLLBACK'
@@ -122,17 +135,17 @@ app.post '/hack/:address', (req, res, next) ->
         if err
           db.run 'ROLLBACK'
           return res.send 500, err
-        from_amount = from_r.amount_mbtc
-        to_amount = to_r.amount_mbtc
-        hacked_sum = Math.ceil(from_amount * 0.1)
-        from_amount -= hacked_sum
-        to_amount += hacked_sum
-        db.serialize ->
-          db.run 'INSERT INTO transactions (user, from_address, to_address, amount_mbtc, record, timestamp) VALUES (?,?,?,?,?,datetime(\'now\'))', user, from_addr, to_addr, hacked_sum, JSON.stringify req.body.record
-          db.run 'UPDATE wallets SET amount_mbtc = ? WHERE address = ?', from_amount, from_addr
-          db.run 'UPDATE wallets SET amount_mbtc = ? WHERE address = ?', to_amount, to_addr
-          db.run 'COMMIT', ->
-            res.json 200, { amount: hacked_sum }
+        transfer from_r.amount_mbtc, to_r.amount_mbtc
+  transfer = (from_amount, to_amount) ->
+    hacked_sum = Math.ceil(from_amount * 0.1)
+    from_amount -= hacked_sum
+    to_amount += hacked_sum
+    db.serialize ->
+      db.run 'INSERT INTO transactions (user, from_address, to_address, amount_mbtc, record, timestamp) VALUES (?,?,?,?,?,datetime(\'now\'))', user, from_addr, to_addr, hacked_sum, JSON.stringify req.body.record
+      db.run 'UPDATE wallets SET amount_mbtc = ? WHERE address = ?', from_amount, from_addr
+      db.run 'UPDATE wallets SET amount_mbtc = ? WHERE address = ?', to_amount, to_addr
+      db.run 'COMMIT', ->
+        res.json 200, { amount: hacked_sum }
 
 
 PORT = process.env['PORT'] ? 3000

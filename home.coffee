@@ -180,7 +180,6 @@ login_flow = ->
   prompt 'login: ', (user) ->
     prompt 'password: ', (pwd) ->
       request {a:'login', user, pwd}, (err, response) ->
-        console.log response
         if !err
           current_user = user
           root_actions()
@@ -234,11 +233,13 @@ print_high_scores = ->
   println()
   xhr 'GET', '/phat_wallets', null, (err, data) ->
     println '==== PHATTEST WALLETS ===='
-    for {address, amount_mbtc},i in data
+    for {address, amount_mbtc, times_hacked},i in data
       println [
         "  #{pad i+1, 2}.  #{pad (amount_mbtc/1000).toFixed(3), 7}  "
-        tag 'a', address, onclick: do (address) -> -> cancelMenu(); hack address, root_actions
+        $link = tag 'a', address, onclick: do (address) -> -> cancelMenu(); hack address, root_actions
       ]
+      if times_hacked
+        $link.style.textDecoration = 'line-through'
     scan()
 
 #-------------------------------------------------------------- My wallets -
