@@ -17,9 +17,11 @@ CREATE TABLE IF NOT EXISTS wallets (
   boilerplate text
   );
 CREATE TABLE IF NOT EXISTS transactions (
+  user string,
   from_address string,
   to_address string,
   amount_mbtc int,
+  record text,
   timestamp timestamp
   );
 ''', (err) -> throw err if err; main()
@@ -116,18 +118,17 @@ app.post '/hack/:address', (req, res, next) ->
       if err
         db.run 'ROLLBACK'
         return res.send 500, err
-      console.log 'from_r', from_r
       db.get 'SELECT amount_mbtc FROM wallets WHERE address = ?', to_addr, (err, to_r) ->
         if err
           db.run 'ROLLBACK'
           return res.send 500, err
-        console.log 'to_r', to_r
         from_amount = from_r.amount_mbtc
         to_amount = to_r.amount_mbtc
         hacked_sum = Math.ceil(from_amount * 0.1)
         from_amount -= hacked_sum
         to_amount += hacked_sum
         db.serialize ->
+          db.run 'INSERT INTO transactions (user, from_address, to_address, amount_mbtc, record, timestamp) VALUES (?,?,?,?,?,datetime(\'now\'))', user, from_addr, to_addr, hacked_sum, JSON.stringify req.body.record
           db.run 'UPDATE wallets SET amount_mbtc = ? WHERE address = ?', from_amount, from_addr
           db.run 'UPDATE wallets SET amount_mbtc = ? WHERE address = ?', to_amount, to_addr
           db.run 'COMMIT', ->

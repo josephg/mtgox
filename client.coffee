@@ -109,7 +109,9 @@ class Boilerplate
   resetSwitches: ->
     for number in [0...8]
       @simulator.set -1, number * 2 + 1, 'thinsolid'
-      @record?[@record.length-1] = {}
+      @current_key_state = {}
+      keys = {}; keys[i] = false for i in [0..9]
+      @record?[@frame_num] = keys
     return
 
 
@@ -279,19 +281,25 @@ class Boilerplate
     @initial_state = @simulator
     @simulator = new Simulator JSON.parse JSON.stringify @initial_state.grid
 
-    @record = [{}]
+    @frame_num = 0
+    @record = {}
+    @current_key_state = {}
 
     @on 'keydown', (e) =>
       if 49 <= e.keyCode <= 57
         number = e.keyCode - 49
         @simulator.set -1, number * 2 + 1, 'negative'
-        @record[@record.length-1][number] = true
+        if not @current_key_state[number]
+          (@record[@frame_num] ?= {})[number] = true
+          @current_key_state[number] = true
         @draw()
     @on 'keyup', (e) =>
       if 49 <= e.keyCode <= 57
         number = e.keyCode - 49
         @simulator.set -1, number * 2 + 1, 'thinsolid'
-        @record[@record.length-1][number] = false
+        if @current_key_state[number]
+          (@record[@frame_num] ?= {})[number] = false
+          @current_key_state[number] = false
         @draw()
 
     @on 'blur', =>
@@ -299,9 +307,9 @@ class Boilerplate
 
     @running = setInterval =>
       @simulator.step()
-      @record.push {}
       @draw()
-      on_step()
+      @frame_num++
+      on_step?()
     , 200
 
   stop: ->
@@ -312,7 +320,7 @@ class Boilerplate
 
   reset: ->
     @simulator = @initial_state
-    @record = []
+    @record = {}
     @initial_state = null
 
 

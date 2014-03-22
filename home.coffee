@@ -345,16 +345,17 @@ hack = (address, cb) ->
         b.stop()
         b.unregister()
         fs.remove()
-        choose_hack_dest wallet, b.record
+        println "04_ttx:  wallet #{wallet.address} compromised. #{wallet.amount_mbtc/10} BTC recovered."
+        println ["press space to continue...", $cursor = tag 'span#cursor']
+        debugger
+        await ' ': -> $cursor.remove(); choose_hack_dest wallet, b.record
 
 choose_hack_dest = (wallet, record) ->
-  println "04_ttx:  wallet #{wallet.address} compromised. #{wallet.amount_mbtc/10} BTC recovered."
   xhr 'GET', '/wallets', null, (err, data) ->
     if not data?.wallets?
       println "--- NO WALLETS ---"
     else
       println "choose destination wallet:"
-      println "    BTC  ADDRESS"
       opts = {}
       for w in data.wallets
         opts[w.address] = do (w) -> ->
