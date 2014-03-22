@@ -48,8 +48,9 @@ xhr = (method, url, payload, callback) ->
 ################################################################### Screen #
 $screen = document.body.appendChild tag '.screen'
 println = (l) ->
-  $screen.appendChild tag '.line', l ? tag 'br'
+  el = $screen.appendChild tag '.line', l ? tag 'br'
   window.scrollTo 0, document.documentElement.scrollHeight
+  el
 
 window.onresize = ->
   window.scrollTo 0, document.documentElement.scrollHeight
@@ -83,9 +84,32 @@ cancelMenu = ->
   document.getElementById('cursor')?.remove()
 
 decide = (options) ->
-  println (for k, v of options
-    tag 'span.option', ['[ ', tag('a', k, onclick:v), ' ]  ']
-  )
+  num = Object.keys(options).length
+  el = println (for k, v of options
+    [ tag('span.option', ['[ ', tag('a', k, onclick: -> done(); v()), ' ]']), '  ' ]
+  ).reduce (m,o) -> m.concat o
+  $opts = el.getElementsByClassName('option')
+  $opts[0].classList.add 'selected'
+  window.addEventListener 'keydown', keydown = (e) ->
+    switch e.keyCode
+      when 37 # <-
+        sel = el.querySelector('.selected')
+        if sel.previousElementSibling
+          sel.classList.remove('selected')
+          sel.previousElementSibling.classList.add('selected')
+      when 39 # ->
+        sel = el.querySelector('.selected')
+        if sel.nextElementSibling
+          sel.classList.remove('selected')
+          sel.nextElementSibling.classList.add('selected')
+      when 13 # enter
+        e.preventDefault()
+        i = Array::indexOf.call $opts, el.querySelector('.selected')
+        done()
+        options[Object.keys(options)[i]]()
+  done = ->
+    el.querySelector('.selected').classList.remove('selected')
+    window.removeEventListener 'keydown', keydown
 
 prompt = (str, callback) ->
   println [tag('span', str), $entry = tag('span.entry'), $cursor = tag 'span#cursor']
@@ -236,7 +260,7 @@ print_high_scores = ->
     for {address, amount_mbtc, times_hacked},i in data
       println [
         "  #{pad i+1, 2}.  #{pad (amount_mbtc/1000).toFixed(3), 7}  "
-        $link = tag 'a', address, onclick: do (address) -> -> cancelMenu(); hack address, root_actions
+        $link = tag 'a', address, onclick: do (address) -> -> cancelMenu(); hack address, scan
       ]
       if times_hacked
         $link.style.textDecoration = 'line-through'
@@ -260,11 +284,11 @@ my_wallets = ->
             edit_wallet w
         ]
     menu
+      'return': root_actions
       'create wallet': -> edit_wallet {address: null, boilerplate: {}}
       #'transfer BTC': transfer
       #'delete wallet': delete_wallet
 
-      'return': root_actions
 
 edit_wallet = (wallet) ->
   fs = fullscreen [

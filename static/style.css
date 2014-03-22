@@ -16,10 +16,6 @@ a:hover {
   color: white;
 }
 
-@keyframes blink {  
-  0% { color: inherit; }
-  100% { color: transparent; }
-}
 #cursor {
   -webkit-animation: blink 1s steps(4, start) infinite;
   display: inline-block;
@@ -30,6 +26,21 @@ a:hover {
 @-webkit-keyframes blink {
   to {
     visibility: hidden;
+  }
+}
+
+.option.selected {
+  -webkit-animation: flash 0.75s steps(1) infinite;
+  background: black;
+}
+@-webkit-keyframes flash {
+  0% {
+    background: black;
+    color: white;
+  }
+  50% {
+    background: white;
+    color: black;
   }
 }
 
