@@ -80,6 +80,9 @@ menu = (items) ->
   await my_events
 
 cancelMenu = ->
+  for a in document.querySelectorAll('a.menu')
+    a.parentNode.insertBefore tag('span', a.textContent), a
+    a.remove()
   awaiting = {}
   document.getElementById('cursor')?.remove()
 
