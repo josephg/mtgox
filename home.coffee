@@ -69,14 +69,15 @@ menu = (items) ->
   i = 0
   my_events = {}
   for k,v of items
-    f = do (v) -> ->
+    f = do (v,i) -> ->
+      $prompt.textContent = '> ' + i
       println()
       cancelMenu()
       v()
     println [i+'. ', tag 'a.menu', k, onclick: f]
     my_events[i] = f
     i++
-  println [tag('span', '> '), tag 'span#cursor']
+  println [$prompt = tag('span', '> '), tag 'span#cursor']
   await my_events
 
 cancelMenu = ->
